@@ -1,20 +1,31 @@
 (ns jobs.jobs
   "Namesspace holding the declarative definitions of ml jobs.")
 
-(def abstract-learning
-  {:input
-   '{:data d, :model-kind k, :attribute-roles a}
-   
-   :tasks
-   [[`concrete-learning
-     '{:data d, :model-kind k, :attribute-roles a}
-     '{:target-model t, :optimization o}]
-    [`learning
-     '{:data d, :target-model t, :optimization o}
-     '{:model m}]]
-   
-   :output
-   '{:model m}})
+(defmacro define-job [job-name & {input-def :input
+                                  tasks :tasks
+                                  output-def :output}]
+  (let [platform-sym (gensym "platform_")]
+    `(defn ~job-name [~platform-sym input#]
+       (let [~input-def input#]
+         (let ~(vec (mapcat (fn [[f input-map output-map]]
+                              [output-map `(~f ~platform-sym ~input-map)])
+                            tasks))
+           ~output-def)))))
+
+(define-job abstract-learning
+  :input
+  {d :data, k :model-kind, a :attribute-roles}
+
+  :tasks
+  [[concrete-learning
+    {:data d, :model-kind k, :attribute-roles a}
+    {t :target-model, o :optimization}]
+   [learning
+    {:data d, :target-model t, :optimization o}
+    {m :model}]]
+
+  :output
+  {:model m})
 
 (def apply-in-sample
   {:input
